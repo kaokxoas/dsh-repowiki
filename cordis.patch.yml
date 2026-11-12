@@ -1,0 +1,7 @@
+# bundle 层入口：把本插件自己插入 root 插件树。
+# 没有这个文件时，profile 的 dsh.profile.bundles 里虽然有本包名，
+# 但展开后没有任何 entry，loader 判为「无纤维」→ 设置页显示「异常」。
+- insert:
+    - id: repowiki
+      name: "@dsh-external/dsh-repowiki"
+      config: {}

@@ -1,0 +1,53 @@
+{
+  "name": "@dsh-external/dsh-repowiki",
+  "version": "1.0.0",
+  "description": "确定性代码库 wiki 引擎：scan / map / diff / coverage 四个命令，零依赖、不出网、不调模型。既是 CLI，也是 DSH 插件（左侧栏阅读器 + 四个模型可调工具）。",
+  "type": "module",
+  "main": "./lib/index.js",
+  "files": [
+    "lib",
+    "bin",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "bin": {
+    "repowiki": "./bin/repowiki.mjs"
+  },
+  "license": "MIT",
+  "keywords": [
+    "wiki",
+    "documentation",
+    "codebase",
+    "pagerank",
+    "dsh-plugin"
+  ],
+  "peerDependencies": {
+    "cordis": ">=4.0.0-rc <5",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.0.1-rc <2"
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./engine": {
+      "default": "./lib/engine.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  }
+}
