@@ -116,6 +116,43 @@ cordis.patch.yml    bundle patch（把本插件插进 root 插件树）
 - 单文件读取上限 512 KB，扫描文件上限 40000，超了写进 coverage 的 skipped。
 - 不做 AST：符号和 import 靠正则，跨语言覆盖 java/kt/scala/js/ts/py/go/rb/php/cs。解析不到的引用会落到 `edges=0`，不猜。
 
+## 六、实测数字（不是估算）
+
+在一个真实 Java/Vue 单体仓库上跑过（13774 个文件 / 9570 个源码文件 / 56.4 MB）：
+
+| 项 | 值 |
+|---|---|
+| 扫描文件 | 13774 |
+| 源码文件 | 9570（56.4 MB） |
+| 抽到符号 | 17204 |
+| 解析出的 import 边 | 417 |
+| 生成页 | 7（`overview` `structure` `deps` `symbols` `history` `coverage` `todos`） |
+| `data.js` | 121939 bytes |
+| `scan` 耗时 | 前台等 240s 未返回（像卡死），**后台实际跑完、产物正常** |
+
+`scan` 在这个量级上请后台跑再读日志，不要前台等。判断「是不是真卡死」看一个东西：输出目录里 `status.json` 有没有出现——没有就还没进写盘阶段。
+
+PageRank 第一名的可信度抽查：`overview.md` 排第一的是 `phenix-aidp-ui/aiops/phenix-aidp-ui-aegis-component/src/utils/request.ts`（score 0.001836，被 28 个文件引用）。这是 HTTP 客户端封装，确实是全前端的汇聚点——排序结果是能对上的。
+
+## 七、已知短板（写在前面，别踩了才发现）
+
+| 短板 | 表现 | 为什么没修 |
+|---|---|---|
+| `deps` 页依赖根目录的 manifest | 项目根没有 `package.json` 时（Java 多模块仓库很常见），这页只有一句「无 Node 依赖声明」 | 按语言找 manifest 需要按构建系统分派（maven/gradle/pnpm/npm/go mod），一套做完容易各语言都半吊子；宁可明说没有 |
+| `edges` 远少于 `symbols` | 17204 个符号只连出 417 条边 | 正则只认「同文件内显式 import 行 + 能 resolved 到仓库内路径」的调用；Spring 的 `@Autowired`、Vue 的动态 import、反射全部看不见 |
+| 页面文字是模板 | 每页结构固定，读起来不像人写的 | 引擎不调模型。要「像人写的」，用它的产出当骨架，人或 agent 补 §三 里说的「跑出来的判据」 |
+| 不做语义理解 | 无法回答「为什么这样设计」 | 静态分析拿不到设计意图 |
+
+## 八、装成全局命令
+
+```bash
+cd D:/WORK/repowiki
+npm link            # 之后 repowiki 直接可用
+repowiki --version  # 1.0.0
+```
+
+没装也不影响：`node D:/WORK/repowiki/bin/repowiki.mjs <子命令>` 参数完全一样。
+
 ## License
 
-MIT
+MIT。设计取向参考 [he-yufeng/RepoWiki](https://github.com/he-yufeng/RepoWiki)（MIT）；本实现零 Python 依赖，纯 Node ESM。
