@@ -4,16 +4,26 @@
   "description": "确定性代码库 wiki 引擎：scan / map / diff / coverage 四个命令，零依赖、不出网、不调模型。既是 CLI，也是 DSH 插件（左侧栏阅读器 + 四个模型可调工具）。",
   "type": "module",
   "main": "./lib/index.js",
+  "bin": {
+    "repowiki": "./bin/repowiki.mjs"
+  },
   "files": [
     "lib",
     "bin",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
-  "bin": {
-    "repowiki": "./bin/repowiki.mjs"
-  },
   "license": "MIT",
+  "author": "kaokxoas",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaokxoas/dsh-repowiki.git"
+  },
+  "homepage": "https://github.com/kaokxoas/dsh-repowiki#readme",
+  "bugs": {
+    "url": "https://github.com/kaokxoas/dsh-repowiki/issues"
+  },
   "keywords": [
     "wiki",
     "documentation",
