@@ -23,7 +23,16 @@ dev_inject_plugin C:/Users/Administrator/.dsh/local-plugins/dsh-repowiki
 - 四个按钮：**重新生成** / **阅读顺序** / **Review 顺序** / **覆盖报告**
 - 模型侧多四个工具：`repowiki_scan` `repowiki_map` `repowiki_diff` `repowiki_coverage`
 
-Host 半身同时起一个只读 HTTP 服务在 `127.0.0.1:34572`（面板从 `http://127.0.0.1:34572/` 也能开）。
+Host 半身同时起一个只读 JSON 服务在 `127.0.0.1:34572`，面板通过它取数据。根路径 `/` 是 404——这不是网页，是一组 API：
+
+| 路径 | 作用 |
+|---|---|
+| `GET /@dsh-external/dsh-repowiki/api/health` | 存活探针，返回 `ok` |
+| `GET .../api/state` | 引擎版本、wikiDir、project、是否正在扫、最近日志 |
+| `GET .../api/wiki` | 整包 `{tree, pages, order, status}`，面板一次拿全 |
+| `GET .../api/pages?id=<id>` | 单页 markdown |
+| `GET .../api/coverage?project=` / `.../api/map?project=&top=` / `.../api/diff?project=&range=` | 三份报告 |
+| `POST .../api/scan` | 触发一次扫描 |
 
 ### 配置
 
