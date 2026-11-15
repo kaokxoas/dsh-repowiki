@@ -18,9 +18,7 @@ dev_inject_plugin C:/Users/Administrator/.dsh/local-plugins/dsh-repowiki
 
 注入后：
 
-- 左侧栏出现 **RepoWiki**（order 27）
-- 主区是阅读器：左边目录树、右边正文
-- 四个按钮：**重新生成** / **阅读顺序** / **Review 顺序** / **覆盖报告**
+- **不新增侧栏入口**。侧栏的「RepoWiki」由 `@dsh-external/dsh-repo-wiki-studio`（order 26）提供，它的阅读器已能直接打开本工具生成的目录（`detectWikiKind` 认 `data.js` → `repowiki-data`）；本插件的 `lib/client.js` 是空实现，只保留 `dsh.client` 声明所需的占位，避免侧栏出现两个同名项
 - 模型侧多四个工具：`repowiki_scan` `repowiki_map` `repowiki_diff` `repowiki_coverage`
 
 Host 半身同时起一个只读 JSON 服务在 `127.0.0.1:34572`，面板通过它取数据。根路径 `/` 是 404——这不是网页，是一组 API：
@@ -114,7 +112,7 @@ repowiki scan D:/WORK/MINISO/project --out D:/WORK/repowiki-out
 ```
 lib/engine.js       引擎核心：walk / gitSummary / buildMap / rankDiff / coverageReport / buildWiki
 lib/index.js        Harness Host 半身：只读 HTTP + 四个模型工具
-lib/client.js       Harness Client 半身：侧栏入口 + 阅读器面板
+lib/client.js       Client 半身占位：不注册任何 slot（侧栏只留 studio 那一个）
 bin/repowiki.mjs    CLI 入口
 cordis.patch.yml    bundle patch（把本插件插进 root 插件树）
 ```
