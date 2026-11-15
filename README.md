@@ -112,6 +112,7 @@ repowiki scan D:/WORK/MINISO/project --out D:/WORK/repowiki-out
 ```
 lib/engine.js       引擎核心：walk / gitSummary / buildMap / rankDiff / coverageReport / buildWiki
 lib/contract.js     Host 纯函数契约：readWikiBundle / isValidPageId / readWikiPage
+lib/manifests.js    多语言依赖清单解析：pom.xml / build.gradle / package.json
 lib/index.js        Harness Host 半身：8 条只读 HTTP + 四个模型工具
 lib/client.js       Client 半身占位：不注册任何 slot（侧栏只留 studio 那一个）
 bin/repowiki.mjs    CLI 入口
@@ -127,37 +128,39 @@ cordis.patch.yml    bundle patch（把本插件插进 root 插件树）
 
 ## 六、实测数字（不是估算）
 
-在一个真实 Java/Vue 单体仓库上跑过（13774 个文件 / 9570 个源码文件 / 56.4 MB）：
+在一个真实 Java/Vue 单体仓库上跑过（14 010 个文件 / 9 744 个源码文件 / 约 57 MB）：
 
 | 项 | 值 |
 |---|---|
-| 扫描文件 | 13774 |
-| 源码文件 | 9570（56.4 MB） |
-| 抽到符号 | 17204 |
-| 解析出的 import 边 | 417 |
+| 扫描文件 | 14 010 |
+| 源码文件 | 9 744 |
+| 抽到符号 | 17 714 |
+| 解析出的 import 边 | **19 569**（Java 17 784 / Vue 989 / TS 325 / Python 417 / JS 53） |
+| 读取的依赖清单 | 255（Maven pom 201 / package.json 54） |
+| 依赖条目合计 | 1 650 |
 | 生成页 | 7（`overview` `structure` `deps` `symbols` `history` `coverage` `todos`） |
-| `data.js` | 121939 bytes |
-| `scan` 耗时 | 前台等 240s 未返回（像卡死），**后台实际跑完、产物正常** |
+| `data.js` | 约 200 KB |
+| `scan` 耗时（热缓存） | **6–7 秒**；冷启动首次读 1.4 万个文件约 45 秒 |
+| `scan` 耗时（修复前） | 前台 240 秒未返回，看起来像卡死 |
 
-`scan` 在这个量级上请后台跑再读日志，不要前台等。判断「是不是真卡死」看一个东西：输出目录里 `status.json` 有没有出现——没有就还没进写盘阶段。
+冷启动（系统文件缓存空的第一次）请后台跑再读日志；热缓存下 7 秒够了。判断「是不是真卡死」看输出目录里 `status.json` 有没有出现——没有就还没进写盘阶段。
 
-PageRank 第一名的可信度抽查：`overview.md` 排第一的是 `phenix-aidp-ui/aiops/phenix-aidp-ui-aegis-component/src/utils/request.ts`（score 0.001836，被 28 个文件引用）。这是 HTTP 客户端封装，确实是全前端的汇聚点——排序结果是能对上的。
+PageRank 第一名的可信度抽查：修复后 `overview.md` 排第一的是 `phenix-aidp-common/src/main/java/com/topdata/phenix/sys/common/R.java`（fanIn **395**）——统一响应信封，全平台最底层基类。修复前第一名是某个前端 `request.ts`，因为 Java 边全是 0，排序没有参考价值。
 
 ## 七、已知短板（写在前面，别踩了才发现）
 
 | 短板 | 表现 | 为什么没修 |
 |---|---|---|
-| `deps` 页依赖根目录的 manifest | 项目根没有 `package.json` 时（Java 多模块仓库很常见），这页只有一句「无 Node 依赖声明」 | 按语言找 manifest 需要按构建系统分派（maven/gradle/pnpm/npm/go mod），一套做完容易各语言都半吊子；宁可明说没有 |
-| 边仍少于符号 | 17713 个符号连出 18201 条边（Java 占 17784） | 正则只认显式 import 行 + 能解析到仓库内路径的调用；Spring 的 `@Autowired`、Vue 动态 import、反射看不见。2026-11-15 修过两个 bug：① 悬挂节点让 PageRank 退化成 O(n²)（n=2000 需 4.3s，9570 个文件会卡到分钟级），改成标量汇聚后 n=9570 仅 183ms，结果逐位不变；② Maven 目录的 `src/main/java` 前缀被当成包名，导致 6909 个 Java 文件一条边都没有，按源码根截断后修复 |
+| 边仍少于符号 | 17714 个符号连出 19569 条边（Java 17784 / Vue 989 / TS 325 / Py 417 / JS 53） | 正则只认显式 import 行 + 能解析到仓库内路径的调用；Spring 的 `@Autowired`、Vue 动态 import、反射看不见。2026-11-15 修过两个 bug：① 悬挂节点让 PageRank 退化成 O(n²)（n=2000 需 4.3s，9570 个文件会卡到分钟级），改成标量汇聚后 n=9570 仅 183ms，结果逐位不变；② Maven 目录的 `src/main/java` 前缀被当成包名，导致 6909 个 Java 文件一条边都没有，按源码根截断后修复；③ Windows 上 `resolve('/', baseDir, spec)` 得到 `C:\src\util` 带盘符，改成纯字符串归一化后 JS/Vue 依赖才解析出来 |
 | 页面文字是模板 | 每页结构固定，读起来不像人写的 | 引擎不调模型。要「像人写的」，用它的产出当骨架，人或 agent 补 §三 里说的「跑出来的判据」 |
 | 不做语义理解 | 无法回答「为什么这样设计」 | 静态分析拿不到设计意图 |
 
 ## 八、测试与回归护栏
 
-`node --test`，零依赖，57 个用例，全跑约 6 秒：
+`node --test`，零依赖，72 个用例，全跑约 7 秒：
 
 ```bash
-npm test          # 全量：契约 + 引擎 + CLI + 性能
+npm test          # 全量：契约 + 引擎 + 清单解析 + CLI + 性能
 npm run test:fast # 只跑契约与引擎，约 1 秒
 ```
 
@@ -165,6 +168,7 @@ npm run test:fast # 只跑契约与引擎，约 1 秒
 |---|---|---|
 | `test/contract.test.js` | `readWikiBundle` / `isValidPageId` / `readWikiPage` | 这三件事错了会**静默**：data.js 解析失败面板空白、id 白名单漏了能让 `..` 通过 |
 | `test/engine.test.js` | `stripSourceRoot` / `pageRank` / `resolveImport` / `walkProject` / `buildWiki` / `rankDiff` / `coverageReport` | 都是踩过的坑：Maven 源码根、PageRank O(n^2)、Windows 下 `resolve('/',...)` 带盘符 |
+| `test/manifests.test.js` | `parsePom` / `parseGradle` / `parsePackageJson` / `collectManifests` | pom.xml 用正则解析，边界必须锁死：parent 的 groupId 不能被当自己的、dependencyManagement 不能混进直接依赖、变量拼接的 Gradle 坐标要丢弃而不是生成假依赖 |
 | `test/cli.test.js` | 退出码、`--json` 可解析、默认输出目录不落进项目 | 脚本和模型真正依赖这些契约，不是措辞 |
 | `test/perf.test.js` | 10000 悬挂节点 < 1s、3000 文件 buildMap < 60s | 防止性能回退到不可用 |
 
@@ -172,6 +176,7 @@ npm run test:fast # 只跑契约与引擎，约 1 秒
 
 - **Windows 上 git 目录清理会 EPERM**：`rmSync` 试两次就放手，不在清理里自旋等待，否则每条用例被拖慢一两秒。
 - **`node --test test/` 在部分 Node 版本会被当成模块路径**：要显式列出文件名（见 `package.json` 的 scripts）。
+
 ## 九、装成全局命令
 
 ```bash
