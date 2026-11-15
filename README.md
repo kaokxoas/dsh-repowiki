@@ -111,9 +111,11 @@ repowiki scan D:/WORK/MINISO/project --out D:/WORK/repowiki-out
 
 ```
 lib/engine.js       引擎核心：walk / gitSummary / buildMap / rankDiff / coverageReport / buildWiki
-lib/index.js        Harness Host 半身：只读 HTTP + 四个模型工具
+lib/contract.js     Host 纯函数契约：readWikiBundle / isValidPageId / readWikiPage
+lib/index.js        Harness Host 半身：8 条只读 HTTP + 四个模型工具
 lib/client.js       Client 半身占位：不注册任何 slot（侧栏只留 studio 那一个）
 bin/repowiki.mjs    CLI 入口
+test/*.test.js      回归用例：契约 / 引擎 / CLI / 性能（node --test）
 cordis.patch.yml    bundle patch（把本插件插进 root 插件树）
 ```
 
@@ -150,7 +152,27 @@ PageRank 第一名的可信度抽查：`overview.md` 排第一的是 `phenix-aid
 | 页面文字是模板 | 每页结构固定，读起来不像人写的 | 引擎不调模型。要「像人写的」，用它的产出当骨架，人或 agent 补 §三 里说的「跑出来的判据」 |
 | 不做语义理解 | 无法回答「为什么这样设计」 | 静态分析拿不到设计意图 |
 
-## 八、装成全局命令
+## 八、测试与回归护栏
+
+`node --test`，零依赖，57 个用例，全跑约 6 秒：
+
+```bash
+npm test          # 全量：契约 + 引擎 + CLI + 性能
+npm run test:fast # 只跑契约与引擎，约 1 秒
+```
+
+| 文件 | 测什么 | 为什么值得锁 |
+|---|---|---|
+| `test/contract.test.js` | `readWikiBundle` / `isValidPageId` / `readWikiPage` | 这三件事错了会**静默**：data.js 解析失败面板空白、id 白名单漏了能让 `..` 通过 |
+| `test/engine.test.js` | `stripSourceRoot` / `pageRank` / `resolveImport` / `walkProject` / `buildWiki` / `rankDiff` / `coverageReport` | 都是踩过的坑：Maven 源码根、PageRank O(n^2)、Windows 下 `resolve('/',...)` 带盘符 |
+| `test/cli.test.js` | 退出码、`--json` 可解析、默认输出目录不落进项目 | 脚本和模型真正依赖这些契约，不是措辞 |
+| `test/perf.test.js` | 10000 悬挂节点 < 1s、3000 文件 buildMap < 60s | 防止性能回退到不可用 |
+
+测试自身也踩过两个坑，写在这里免得再犯：
+
+- **Windows 上 git 目录清理会 EPERM**：`rmSync` 试两次就放手，不在清理里自旋等待，否则每条用例被拖慢一两秒。
+- **`node --test test/` 在部分 Node 版本会被当成模块路径**：要显式列出文件名（见 `package.json` 的 scripts）。
+## 九、装成全局命令
 
 ```bash
 cd D:/WORK/repowiki

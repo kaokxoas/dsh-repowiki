@@ -10,10 +10,15 @@
   "files": [
     "lib",
     "bin",
+    "test",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
   ],
+  "scripts": {
+    "test": "node --test test/contract.test.js test/engine.test.js test/cli.test.js test/perf.test.js",
+    "test:fast": "node --test test/contract.test.js test/engine.test.js"
+  },
   "license": "MIT",
   "author": "kaokxoas",
   "repository": {
